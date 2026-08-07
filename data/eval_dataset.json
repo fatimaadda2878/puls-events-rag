@@ -1,0 +1,20 @@
+[
+  {
+    "id": "neg_reggae",
+    "question": "Y a-t-il des concerts de reggae à Paris ?",
+    "expect_no_result": true,
+    "required_terms": []
+  },
+  {
+    "id": "pos_culture",
+    "question": "Quels événements culturels sont disponibles à Paris ?",
+    "expect_no_result": false,
+    "required_terms": []
+  },
+  {
+    "id": "neg_tokyo",
+    "question": "Quels festivals sont proposés à Tokyo ?",
+    "expect_no_result": true,
+    "required_terms": []
+  }
+]

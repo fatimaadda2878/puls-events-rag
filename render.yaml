@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: puls-events-rag
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: REBUILD_API_KEY
+        generateValue: true
+      - key: MIN_RELEVANCE_SCORE
+        value: "0.55"
