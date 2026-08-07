@@ -1,5 +1,5 @@
 from __future__ import annotations
-from mistralai.client import Mistral
+from mistralai import Mistral
 from .config import MISTRAL_API_KEY,MISTRAL_CHAT_MODEL,MIN_RELEVANCE_SCORE,TOP_K
 from .indexer import load_index
 

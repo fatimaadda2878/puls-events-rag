@@ -1,5 +1,5 @@
 from langchain_core.embeddings import Embeddings
-from mistralai.client import Mistral
+from mistralai import Mistral
 from .config import MISTRAL_API_KEY, MISTRAL_EMBED_MODEL
 
 class MistralEmbeddings(Embeddings):
