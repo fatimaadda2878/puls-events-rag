@@ -1,26 +1,86 @@
 [
   {
-    "id": "negative_reggae",
-    "question": "Y a-t-il des concerts de reggae à Paris ?",
-    "expect_no_result": true,
-    "expected_source_terms": []
+    "id": "positive_september_2026",
+    "question": "Quels événements sont proposés à Paris en septembre 2026 ?",
+    "expect_no_result": false,
+    "expected_source_terms": [
+      "paris",
+      "2026-09"
+    ],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "positive_concerts",
+    "question": "Quels concerts sont proposés à Paris ?",
+    "expect_no_result": false,
+    "expected_source_terms": [
+      "paris"
+    ],
+    "forbidden_source_terms": []
   },
   {
     "id": "positive_culture",
     "question": "Quels événements culturels puis-je voir à Paris ?",
     "expect_no_result": false,
-    "expected_source_terms": []
+    "expected_source_terms": [
+      "paris"
+    ],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "positive_november_2026",
+    "question": "Quels événements sont proposés à Paris en novembre 2026 ?",
+    "expect_no_result": false,
+    "expected_source_terms": [
+      "paris",
+      "2026-11"
+    ],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "negative_reggae",
+    "question": "Y a-t-il des concerts de reggae à Paris ?",
+    "expect_no_result": true,
+    "expected_source_terms": [],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "negative_free_concerts",
+    "question": "Quels concerts gratuits sont proposés à Paris ?",
+    "expect_no_result": true,
+    "expected_source_terms": [],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "negative_fake_kpop",
+    "question": "Y a-t-il un festival de k-pop nommé PulsGalaxy 2099 à Paris ?",
+    "expect_no_result": true,
+    "expected_source_terms": [],
+    "forbidden_source_terms": []
+  },
+  {
+    "id": "negative_fake_today",
+    "question": "Y a-t-il aujourd'hui un concert appelé Festival Imaginaire XYZ à Paris ?",
+    "expect_no_result": true,
+    "expected_source_terms": [],
+    "forbidden_source_terms": []
   },
   {
     "id": "positive_week",
     "question": "Quels événements sont proposés à Paris cette semaine ?",
     "expect_no_result": false,
-    "expected_source_terms": []
+    "expected_source_terms": [
+      "paris"
+    ],
+    "forbidden_source_terms": []
   },
   {
-    "id": "negative_specific_fake",
-    "question": "Y a-t-il un festival de k-pop nommé PulsGalaxy 2099 à Paris ?",
-    "expect_no_result": true,
-    "expected_source_terms": []
+    "id": "positive_music",
+    "question": "Quels événements musicaux sont proposés à Paris ?",
+    "expect_no_result": false,
+    "expected_source_terms": [
+      "paris"
+    ],
+    "forbidden_source_terms": []
   }
 ]
