@@ -8,8 +8,6 @@ La chaîne principale repose sur des données OpenAgenda/OpenDataSoft, des **emb
 
 > Chaîne RAG : **OpenAgenda / OpenDataSoft → LangChain → Mistral Embeddings → FAISS → filtres et seuil de pertinence → Mistral Chat → FastAPI**
 
-Aucun backend TF-IDF ni système de réponse par template n'est utilisé dans la chaîne RAG finale.
-
 ## Démo en ligne
 
 - API Render : `https://puls-events-rag.onrender.com`
