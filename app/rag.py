@@ -7,7 +7,13 @@ from .config import (
     MISTRAL_CHAT_MODEL,
     TOP_K,
 )
-from .filters import overlaps_period, passes_genre_guard, requested_period
+from .filters import (
+    overlaps_period,
+    passes_event_type_guard,
+    passes_free_guard,
+    passes_genre_guard,
+    requested_period,
+)
 from .indexer import load_index
 from .mistral_client import Mistral
 
@@ -18,8 +24,6 @@ def _message_content(message) -> str:
     content = getattr(message, "content", "")
     if isinstance(content, str):
         return content.strip()
-
-    # Compatibilité éventuelle avec des contenus structurés.
     if isinstance(content, list):
         parts = []
         for item in content:
@@ -30,7 +34,6 @@ def _message_content(message) -> str:
             else:
                 parts.append(str(getattr(item, "text", "")))
         return "\n".join(x for x in parts if x).strip()
-
     return str(content or "").strip()
 
 
@@ -43,18 +46,12 @@ class RAGService:
 
     @staticmethod
     def relevance_from_l2(distance: float) -> float:
-        """
-        Index FAISS avec vecteurs L2-normalisés :
-        squared_L2 = 2 - 2*cosine  => cosine = 1 - squared_L2 / 2.
-        """
+        # Vecteurs normalisés : squared_L2 = 2 - 2*cosine.
         return max(-1.0, min(1.0, 1.0 - float(distance) / 2.0))
 
     def retrieve(self, question: str):
         period = requested_period(question)
-        hits = self.store.similarity_search_with_score(
-            question,
-            k=CANDIDATE_K,
-        )
+        hits = self.store.similarity_search_with_score(question, k=CANDIDATE_K)
 
         accepted = []
         seen_events = set()
@@ -64,19 +61,20 @@ class RAGService:
             if relevance < MIN_RELEVANCE_SCORE:
                 continue
 
+            # Les contraintes explicites sont des filtres DURS.
             if not passes_genre_guard(question, doc.page_content):
                 continue
-
+            if not passes_free_guard(question, doc.page_content):
+                continue
+            if not passes_event_type_guard(question, doc.page_content):
+                continue
             if not overlaps_period(doc.metadata, period):
                 continue
 
-            event_id = (
-                doc.metadata.get("id")
-                or (
-                    doc.metadata.get("title"),
-                    doc.metadata.get("start"),
-                    doc.metadata.get("address"),
-                )
+            event_id = doc.metadata.get("id") or (
+                doc.metadata.get("title"),
+                doc.metadata.get("start"),
+                doc.metadata.get("address"),
             )
             if event_id in seen_events:
                 continue
@@ -109,14 +107,26 @@ class RAGService:
 
         system_prompt = (
             "Tu es l'assistant événementiel Puls-Events. "
-            "Tu dois répondre uniquement à partir des événements fournis dans le contexte. "
-            "N'invente jamais de titre, date, lieu, tarif ou disponibilité. "
-            "Si le contexte ne répond pas précisément à la question, réponds exactement : "
+            "Les événements du CONTEXTE ont déjà été validés par des filtres stricts. "
+            "Réponds UNIQUEMENT à partir de ces événements. "
+            "Chaque événement cité dans la réponse doit correspondre à un bloc EVENEMENT fourni. "
+            "N'ajoute aucun événement absent du contexte. "
+            "N'infère JAMAIS qu'un événement est reggae, jazz, concert, gratuit, futur, "
+            "disponible ou d'un autre type si cette propriété n'est pas explicitement "
+            "présente dans son bloc. "
+            "Recopie fidèlement les titres, dates, lieux et horaires ; ne les transforme pas. "
+            "N'invente jamais de tarif, disponibilité, date ou lieu. "
+            "Si aucun bloc ne permet de répondre précisément, réponds exactement : "
             f"« {NO_RESULT} » "
             "Réponds en français, de façon concise et utile."
         )
 
-        user_prompt = f"QUESTION:\n{question}\n\nCONTEXTE:\n{context}"
+        user_prompt = (
+            f"QUESTION:\n{question}\n\n"
+            "IMPORTANT : ne cite que les événements ci-dessous et seulement pour les "
+            "propriétés explicitement écrites dans leur texte.\n\n"
+            f"CONTEXTE:\n{context}"
+        )
 
         response = self.client.chat.complete(
             model=MISTRAL_CHAT_MODEL,
@@ -124,17 +134,13 @@ class RAGService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            temperature=0,
         )
 
-        answer = _message_content(response.choices[0].message)
-        if not answer:
-            answer = NO_RESULT
+        answer = _message_content(response.choices[0].message) or NO_RESULT
 
         sources = [
-            {
-                **doc.metadata,
-                "relevance": round(score, 4),
-            }
+            {**doc.metadata, "relevance": round(score, 4)}
             for doc, score in hits
         ]
 
