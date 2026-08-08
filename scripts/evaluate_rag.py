@@ -1,19 +1,78 @@
-import json, re
-from pathlib import Path
-from app.rag import RAGService, NO_RESULT
+from __future__ import annotations
 
-def norm(s): return re.sub(r"\s+"," ",s.lower()).strip()
+import json
+import re
+from pathlib import Path
+
+from app.rag import NO_RESULT, RAGService
+
+
+def norm(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "").casefold()).strip()
+
+
 def main():
-    tests=json.loads(Path("data/eval_dataset.json").read_text(encoding="utf-8")); rag=RAGService(); rows=[]
-    for t in tests:
-        out=rag.ask(t["question"]); ans=out["answer"]; predicted_negative=(ans==NO_RESULT or not out["sources"])
-        if t["expect_no_result"]: ok=predicted_negative
+    dataset = json.loads(
+        Path("data/eval_dataset.json").read_text(encoding="utf-8")
+    )
+    rag = RAGService()
+    results = []
+
+    for case in dataset:
+        output = rag.ask(case["question"])
+        sources = output.get("sources", [])
+        answer = output.get("answer", "")
+        predicted_negative = not sources or norm(answer) == norm(NO_RESULT)
+
+        if case.get("expect_no_result", False):
+            correct = predicted_negative
         else:
-            terms=[norm(x) for x in t.get("required_terms",[])]; ok=(not predicted_negative and all(x in norm(ans) for x in terms))
-        rows.append({"id":t["id"],"question":t["question"],"correct":ok,"negative":t["expect_no_result"],"answer":ans})
-    accuracy=sum(x["correct"] for x in rows)/len(rows)
-    negatives=[x for x in rows if x["negative"]]; negative_accuracy=sum(x["correct"] for x in negatives)/max(1,len(negatives))
-    report={"n":len(rows),"accuracy":round(accuracy,3),"negative_accuracy":round(negative_accuracy,3),"results":rows}
-    Path("reports").mkdir(exist_ok=True); Path("reports/evaluation.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-    print(json.dumps({k:v for k,v in report.items() if k!="results"},indent=2))
-if __name__=="__main__": main()
+            expected = [norm(x) for x in case.get("expected_source_terms", [])]
+            source_blob = norm(
+                " ".join(
+                    f"{s.get('title','')} {s.get('address','')} {s.get('city','')}"
+                    for s in sources
+                )
+            )
+            # Pour un cas positif, on mesure d'abord le retrieval :
+            # au moins une source doit être retournée, puis les termes annotés
+            # sont recherchés dans les sources si le dataset en fournit.
+            correct = bool(sources) and all(term in source_blob for term in expected)
+
+        results.append(
+            {
+                "id": case["id"],
+                "question": case["question"],
+                "expected_negative": case.get("expect_no_result", False),
+                "correct": correct,
+                "answer": answer,
+                "sources": sources,
+            }
+        )
+
+    n = len(results)
+    negatives = [x for x in results if x["expected_negative"]]
+    positives = [x for x in results if not x["expected_negative"]]
+
+    report = {
+        "n": n,
+        "accuracy": round(sum(x["correct"] for x in results) / max(1, n), 3),
+        "negative_accuracy": round(
+            sum(x["correct"] for x in negatives) / max(1, len(negatives)), 3
+        ),
+        "positive_accuracy": round(
+            sum(x["correct"] for x in positives) / max(1, len(positives)), 3
+        ),
+        "results": results,
+    }
+
+    Path("reports").mkdir(exist_ok=True)
+    Path("reports/evaluation.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(json.dumps({k: v for k, v in report.items() if k != "results"}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

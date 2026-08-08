@@ -1,20 +1,26 @@
 [
   {
-    "id": "neg_reggae",
+    "id": "negative_reggae",
     "question": "Y a-t-il des concerts de reggae à Paris ?",
     "expect_no_result": true,
-    "required_terms": []
+    "expected_source_terms": []
   },
   {
-    "id": "pos_culture",
-    "question": "Quels événements culturels sont disponibles à Paris ?",
+    "id": "positive_culture",
+    "question": "Quels événements culturels puis-je voir à Paris ?",
     "expect_no_result": false,
-    "required_terms": []
+    "expected_source_terms": []
   },
   {
-    "id": "neg_tokyo",
-    "question": "Quels festivals sont proposés à Tokyo ?",
+    "id": "positive_week",
+    "question": "Quels événements sont proposés à Paris cette semaine ?",
+    "expect_no_result": false,
+    "expected_source_terms": []
+  },
+  {
+    "id": "negative_specific_fake",
+    "question": "Y a-t-il un festival de k-pop nommé PulsGalaxy 2099 à Paris ?",
     "expect_no_result": true,
-    "required_terms": []
+    "expected_source_terms": []
   }
 ]

@@ -1,70 +1,165 @@
-# Puls-Events — POC RAG événements culturels
+# Puls-Events — POC RAG
 
-POC de chatbot événementiel fondé sur **OpenAgenda → Mistral Embed → FAISS → LangChain → Mistral → FastAPI**. Il n'utilise ni TF-IDF ni backend de réponses template.
+Assistant de recommandation d'événements culturels fondé sur une vraie chaîne RAG :
+
+**OpenAgenda/OpenDataSoft → LangChain → Mistral `mistral-embed` → FAISS → seuil de pertinence → Mistral Chat → FastAPI**
+
+Aucun TF-IDF et aucun backend de réponse par template ne sont utilisés.
 
 ## Architecture
-1. `app/openagenda.py` récupère les pages OpenAgenda jusqu'à épuisement des résultats et conserve les événements de moins d'un an / à venir.
-2. `app/indexer.py` transforme les événements en `Document` LangChain, calcule les embeddings `mistral-embed` et persiste un index FAISS.
-3. `app/rag.py` recherche les voisins sémantiques, convertit la distance L2 normalisée en pertinence cosinus et applique `MIN_RELEVANCE_SCORE`.
-4. Mistral génère une réponse uniquement à partir du contexte retenu.
-5. FastAPI expose `/health`, `/ask`, `/rebuild` et `/docs`. `/rebuild` exige l'en-tête `X-Rebuild-Key`.
 
-## Installation
+- `app/openagenda.py` : récupération des données réelles, pagination `/records`, bascule automatique vers `/exports/csv` au-delà de la fenêtre de 10 000, lecture streaming, déduplication et filtre de récence.
+- `app/embeddings.py` : embeddings Mistral par petits lots avec retry.
+- `app/indexer.py` : chunking, construction progressive FAISS, sauvegarde atomique.
+- `app/rag.py` : retrieval, score de pertinence, garde genre/date, génération Mistral.
+- `app/main.py` : `/health`, `/ask`, `/rebuild`, Swagger `/docs`.
+- `scripts/evaluate_rag.py` : évaluation automatisée des cas positifs/négatifs.
+- `tests/` : tests unitaires sans appel réseau réel.
+
+## Installation locale
+
 ```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
+source .venv/bin/activate
+# Windows PowerShell : .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env  # Windows ; cp .env.example .env sur macOS/Linux
+cp .env.example .env
 ```
-Renseigner `MISTRAL_API_KEY` et changer `REBUILD_API_KEY`.
 
-## Construire l'index réel
-```bash
-python scripts/rebuild_index.py
+Renseigner au minimum :
+
+```text
+MISTRAL_API_KEY=...
+REBUILD_API_KEY=...
 ```
-Le nombre exact d'événements est écrit dans `index/faiss/metadata.json` et visible via `/health`.
 
-## Lancer l'API
+Lancer l'API :
+
 ```bash
 uvicorn app.main:app --reload --port 7860
 ```
-Swagger : `http://localhost:7860/docs`.
 
-## Appels
-```bash
-curl http://localhost:7860/health
-curl -X POST http://localhost:7860/ask -H "Content-Type: application/json" -d '{"question":"Y a-t-il des concerts de reggae à Paris ?"}'
-curl -X POST http://localhost:7860/rebuild -H "X-Rebuild-Key: VOTRE_SECRET"
+Swagger : `http://localhost:7860/docs`
+
+## Reconstruction
+
+### Via l'API
+
+`POST /rebuild` avec l'en-tête :
+
+```text
+X-Rebuild-Key: valeur_de_REBUILD_API_KEY
 ```
 
+L'endpoint répond immédiatement `202 Accepted`. Suivre ensuite :
+
+```text
+GET /health
+```
+
+Quand la reconstruction est terminée :
+
+```json
+{
+  "index_ready": true,
+  "events_indexed": 1234,
+  "documents_indexed": 1500
+}
+```
+
+Les nombres sont calculés réellement ; aucune valeur n'est codée en dur.
+
+### En local
+
+```bash
+python scripts/rebuild_index.py
+```
+
+## Recherche et seuil
+
+`MIN_RELEVANCE_SCORE=0.55` est la valeur initiale. Elle doit être recalibrée avec le jeu d'évaluation.
+
+Le service récupère plus de candidats (`CANDIDATE_K=30`), applique :
+1. le seuil sémantique ;
+2. un contrôle sur un genre explicitement demandé (ex. reggae) ;
+3. un filtre temporel simple (`cette semaine`, `aujourd'hui`, mois).
+
+Puis il conserve au maximum `TOP_K=5`.
+
+Le cas négatif « Y a-t-il des concerts de reggae à Paris ? » doit donc retourner aucun résultat si aucun événement reggae pertinent n'est présent.
+
+## Évaluation
+
+Après reconstruction :
+
+```bash
+python scripts/evaluate_rag.py
+```
+
+Le résultat est écrit dans `reports/evaluation.json` avec :
+- accuracy globale ;
+- accuracy des cas positifs ;
+- accuracy des cas négatifs.
+
+## Tests
+
+```bash
+python -m pytest
+```
+
+Les tests n'appellent ni OpenAgenda ni Mistral sur Internet.
+
 ## Docker
+
 ```bash
 docker build -t puls-events-rag .
 docker run --env-file .env -p 7860:7860 puls-events-rag
 ```
-Pour une démo hors connexion, construire l'index avant la soutenance et conserver le dossier `index/` localement.
 
-## Évaluation
-`data/eval_dataset.json` contient des cas annotés positifs et négatifs. Le cas reggae est explicitement négatif. Après construction de l'index :
+## Render
+
+Configuration recommandée :
+
+**Build command**
+
 ```bash
-python scripts/evaluate_rag.py
+pip install -r requirements.txt
 ```
-Le rapport est écrit dans `reports/evaluation.json`. Le seuil `MIN_RELEVANCE_SCORE` doit être calibré sur ce jeu de validation (valeur initiale 0,55), puis figé avant le test final.
 
-## Tests
+**Start command**
+
 ```bash
-pytest -q
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
-La CI GitHub Actions exécute les tests sans appeler Mistral : les appels externes doivent rester hors des tests unitaires.
 
-## Structure
-- `app/` : API, RAG, embeddings, indexation, OpenAgenda
-- `scripts/` : reconstruction, test API, évaluation
-- `tests/` : tests unitaires
-- `data/` : jeu annoté ; `events.json` généré
-- `index/` : index FAISS généré
-- `docs/` : rapport et présentation
+Variables indispensables :
+- `PYTHON_VERSION=3.11.9`
+- `MISTRAL_API_KEY`
+- `REBUILD_API_KEY`
+- `MISTRAL_CHAT_MODEL=mistral-small-latest`
+- `MISTRAL_EMBED_MODEL=mistral-embed`
+- `MIN_RELEVANCE_SCORE=0.55`
+- `OPENAGENDA_CITY=Paris`
+- `OPENAGENDA_MAX_EVENTS=0`
 
-## Limites / perspectives
-Le seuil sémantique dépend du corpus et doit être calibré. Les filtres temporels complexes (« cette semaine ») peuvent être renforcés par un parsing déterministe des dates avant la recherche. En production : authentification forte, rate limiting, cache, observabilité, stockage persistant de l'index et reconstruction asynchrone.
+Les anciennes variables `TF-IDF`, `EMBEDDING_BACKEND`, `GENERATION_BACKEND`,
+`MAX_OPENAGENDA_EVENTS` et `MISTRAL_MODEL` ne sont pas utilisées.
+
+### Important sur le stockage Render
+
+Un service Render sans disque persistant utilise un système de fichiers éphémère.
+Un index construit via `/rebuild` peut donc être perdu après un redéploiement ou
+un redémarrage. Pour la soutenance gratuite, reconstruire l'index avant la démo.
+Pour une persistance réelle, utiliser un disque Render sur un plan compatible.
+
+## Démo soutenance
+
+1. `/health`
+2. `/docs`
+3. `POST /rebuild`
+4. attendre `index_ready=true`
+5. `POST /ask`
+6. tester notamment :
+   - `Quels événements culturels à Paris cette semaine ?`
+   - `Y a-t-il des concerts de reggae à Paris ?`
+7. lancer `python scripts/evaluate_rag.py`

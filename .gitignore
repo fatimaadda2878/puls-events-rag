@@ -1,32 +1,16 @@
 .env
 .venv/
 venv/
-__pycache__/
-.pytest_cache/
-*.py[cod]
-.DS_Store
-index/faiss/
-data/events.json
-reports/
-# VS Code
-.vscode/
-*.code-workspace
-
-# Python
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/
 env/
-
-# Secrets
-.env
-.env.local
-
-# IDE
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+reports/
+index/
+data/events.json
+.vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
