@@ -289,11 +289,11 @@ Résultat observé lors de la validation finale :
 | Score global | **100 % (10/10)** |
 | Cas positifs | **100 %** |
 | Cas négatifs | **100 %** |
-| Latence moyenne observée | **2,507 s** |
+| Latence moyenne observée | **2,155 s** |
 | Backend | `mistral` |
 | Retrieval | `faiss+mistral-embed` |
 
-Ces résultats décrivent uniquement ce jeu d'évaluation de 10 requêtes et ne constituent pas une garantie de performance générale du système.
+Validation finale effectuée après reconstruction automatique de l’index sur Render : index_ready=true, 9 495 événements indexés, évaluation fonctionnelle 10/10 réussie.
 
 ## CI/CD
 
@@ -339,6 +339,7 @@ MISTRAL_EMBED_MODEL
 MIN_RELEVANCE_SCORE
 OPENAGENDA_CITY
 OPENAGENDA_MAX_EVENTS
+AUTO_REBUILD_ON_START
 ```
 
 ### Persistance de l'index
