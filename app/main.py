@@ -42,9 +42,16 @@ def _valid_rebuild_key(value: str | None) -> bool:
 
 @app.on_event("startup")
 def startup():
-    # Optionnel : utile uniquement si l'utilisateur choisit de reconstruire
-    # automatiquement après un redémarrage Render.
-    if AUTO_REBUILD_ON_START and not index_is_ready() and REBUILD_API_KEY:
+    """
+    Sur un hébergement à système de fichiers éphémère (ex. Render sans disque),
+    l'index FAISS peut disparaître après un redéploiement/redémarrage.
+
+    Si AUTO_REBUILD_ON_START=true et qu'aucun index valide n'est présent,
+    on lance automatiquement un rebuild en arrière-plan. La clé
+    REBUILD_API_KEY reste obligatoire uniquement pour l'appel HTTP /rebuild ;
+    elle n'est pas nécessaire pour cette reconstruction interne.
+    """
+    if AUTO_REBUILD_ON_START and not index_is_ready():
         rebuild_manager.start(on_success=_clear_service_cache)
 
 
@@ -69,6 +76,7 @@ def health():
         "documents_indexed": meta.get("documents_indexed"),
         "retrieval": "faiss+mistral-embed",
         "generation": "mistral",
+        "auto_rebuild_on_start": AUTO_REBUILD_ON_START,
         "rebuild": rebuild,
     }
 

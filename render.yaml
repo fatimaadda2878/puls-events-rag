@@ -22,3 +22,6 @@ services:
         value: Paris
       - key: OPENAGENDA_MAX_EVENTS
         value: "0"
+      - key: AUTO_REBUILD_ON_START
+        value: "true"
+
