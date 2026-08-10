@@ -293,7 +293,8 @@ Résultat observé lors de la validation finale :
 | Backend | `mistral` |
 | Retrieval | `faiss+mistral-embed` |
 
-Validation finale effectuée après reconstruction automatique de l’index sur Render : index_ready=true, 9 495 événements indexés, évaluation fonctionnelle 10/10 réussie.
+Validation finale effectuée après reconstruction automatique de l’index sur Render : index_ready=true, évaluation fonctionnelle 10/10 réussie.
+Le nombre d'événements indexés varie en continu selon les données disponibles sur OpenAgenda et la fréquence des reconstructions de l'index (de l'ordre de plusieurs milliers). Le volume exact à un instant T est consultable via GET /health (champ events_indexed).
 
 ## CI/CD
 
