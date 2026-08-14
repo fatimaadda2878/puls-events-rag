@@ -11,7 +11,7 @@ La chaîne principale repose sur des données OpenAgenda/OpenDataSoft, des **emb
 ## Démo en ligne
 
 - API Render : `https://puls-events-rag.onrender.com`
-- Swagger : `https://puls-events-rag.onrender.com/docs`
+- Swagger : `https://puls-events-rag.onrender.com/doc`
 - Health check : `https://puls-events-rag.onrender.com/health`
 
 ## Fonctionnalités
